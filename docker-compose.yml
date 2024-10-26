@@ -1,0 +1,71 @@
+version: '3'
+
+networks:
+  symfony_movies_network:
+
+services:
+
+  nginx_service:
+    image: nginx:stable-alpine
+    container_name: nginx_store_back_container
+    ports:
+      - "8006:80"
+    volumes:
+      - ./:/var/www/app
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - php_service
+      - mongodb_service
+    networks:
+      - symfony_movies_network
+
+  php_service:
+    container_name: php_store_back_container
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    build:
+      context: .
+      dockerfile: ./docker/php/Dockerfile
+    ports:
+      - "9004:9000"
+    volumes:
+      - ./:/var/www/app
+    networks:
+      - symfony_movies_network
+
+  mongodb_service:
+    image: mongo:latest
+    container_name: mongo_store_back_container
+    ports:
+      - "27017:27017" # Default MongoDB port
+    volumes:
+      - mongo-data:/data/db # Volume for persistent storage
+    restart: always # always restart unless stopped manually
+    networks:
+      - symfony_movies_network
+
+###> doctrine/doctrine-bundle ###
+  database:
+    image: postgres:${POSTGRES_VERSION:-16}-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-app}
+      # You should definitely change the password in production
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-!ChangeMe!}
+      POSTGRES_USER: ${POSTGRES_USER:-app}
+    healthcheck:
+      test: ["CMD", "pg_isready", "-d", "${POSTGRES_DB:-app}", "-U", "${POSTGRES_USER:-app}"]
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+    volumes:
+      - database_data:/var/lib/postgresql/data:rw
+      # You may use a bind-mounted host directory instead, so that it is harder to accidentally remove the volume and lose all your data!
+      # - ./docker/db/data:/var/lib/postgresql/data:rw
+###< doctrine/doctrine-bundle ###
+
+volumes:
+  mongo-data:
+
+###> doctrine/doctrine-bundle ###
+  database_data:
+###< doctrine/doctrine-bundle ###
