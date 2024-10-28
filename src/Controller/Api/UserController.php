@@ -14,9 +14,38 @@ use Symfony\Component\Routing\Annotation\Route;
 class UserController extends AbstractController
 {
     #[Route(
-        '/users/update/{id}',
+        '/users/get-informations',
+        name: 'api_users_get_informations',
+        methods: ['GET']
+    )]
+    public function getInformations(UserServiceInterface $userService, Request $request, ApiHelper $apiHelper): JsonResponse
+    {
+        try {
+            $authHeader = $request->headers->get('Authorization');
+            if (null === $authHeader || !preg_match('/Bearer\s(\S+)/', $authHeader, $matches)) {
+                throw new Exception('No token provided');
+            }
+
+            $token = $matches[1];
+
+            return new JsonResponse(
+                $apiHelper->formatResponse(
+                    "User informations retrieved successfully.",
+                    null,
+                    $userService->getUserInformations($token)
+                )
+            );
+        } catch (Exception $e) {
+            return new JsonResponse(
+                $apiHelper->formatResponse("An error is occured" . $e->getMessage())
+            );
+        }
+    }
+
+    #[Route(
+        '/users/{id}',
         name: 'api_users_update',
-        methods: ['POST']
+        methods: ['PUT']
     )]
     public function update(User $user, UserServiceInterface $userService, Request $request, ApiHelper $apiHelper): JsonResponse
     {
@@ -25,15 +54,14 @@ class UserController extends AbstractController
 
             $name = $data['name'] ?? '';
             $email = $data['email'] ?? '';
-            $password = $data['password'] ?? '';
 
-            if (empty($name) || empty($email) || empty($password)) {
+            if (empty($name) || empty($email)) {
                 return new JsonResponse(
                     $apiHelper->formatResponse("Fields cannot be empty.")
                 );
             }
 
-            $userService->update($user, $name, $email, $password);
+            $userService->update($user, $name, $email);
 
             return new JsonResponse(
                 $apiHelper->formatResponse("Your informations have been updated successfully.")

@@ -5,7 +5,6 @@ namespace App\Service;
 use App\Document\Article;
 use App\Document\User;
 use App\Service\DTO\ArticleDTOTrait;
-use App\Utils\ApiHelper;
 use Doctrine\ODM\MongoDB\DocumentManager;
 use Exception;
 
@@ -18,10 +17,11 @@ class ArticleService implements ArticleServiceInterface
     ) {
     }
 
-    public function all(): array
+    public function userArticles(string $userId): array
     {
         try {
-            $articles = $this->documentManager->getRepository(Article::class)->findAll();
+            $author = $this->documentManager->getRepository(User::class)->find($userId);
+            $articles = $this->documentManager->getRepository(Article::class)->findBy(['author' => $author]);
             $output = [];
             foreach ($articles as $article) {
                 $output[] = $this->formatArticle($article);
@@ -33,18 +33,14 @@ class ArticleService implements ArticleServiceInterface
         return $output;
     }
 
-    public function add(string $title, string $authorId, string $publicationDate): bool
+    public function add(string $title, string $authorId, string $content): bool
     {
         try {
             $author = $this->documentManager->getRepository(User::class)->find($authorId);
             if (!$author) {
                 throw new Exception('Author not found !', 404);
             }
-            $article = new Article(
-                $title,
-                $author,
-                ApiHelper::createDateFromEnglishFormat($publicationDate)
-            );
+            $article = new Article($title, $author, $content);
             $this->documentManager->persist($article);
             $this->documentManager->flush();
         } catch (Exception $e) {
@@ -54,7 +50,7 @@ class ArticleService implements ArticleServiceInterface
         return true;
     }
 
-    public function update(Article $article, string $title, string $authorId, string $publicationDate): bool
+    public function update(Article $article, string $title, string $authorId, string $content): bool
     {
         try {
             $author = $this->documentManager->getRepository(User::class)->find($authorId);
@@ -63,7 +59,7 @@ class ArticleService implements ArticleServiceInterface
             }
             $article->setTitle($title)
                 ->setAuthor($author)
-                ->setPublicationDate(ApiHelper::createDateFromEnglishFormat($publicationDate));
+                ->setContent($content);
             $this->documentManager->flush();
         } catch (Exception $e) {
             throw new Exception($e->getMessage(), $e->getCode());

@@ -3,6 +3,7 @@
 namespace App\Utils;
 
 use DateTime;
+use Exception;
 
 class ApiHelper
 {
@@ -17,5 +18,15 @@ class ApiHelper
 
     public static function createDateFromEnglishFormat(string $date): DateTime {
         return (new DateTime())->createFromFormat("Y/m/d", $date);
+    }
+
+    public static function getTokenFromHeader(string $authHeader): string
+    {
+        // @phpstan-ignore-next-line
+        if (null === $authHeader || !preg_match('/Bearer\s(\S+)/', $authHeader, $matches)) {
+            throw new Exception('No token provided');
+        }
+
+        return $matches[1];
     }
 }

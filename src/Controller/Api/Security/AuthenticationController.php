@@ -3,9 +3,13 @@
 namespace App\Controller\Api\Security;
 
 use App\Service\AuthenticationServiceInterface;
+use App\Service\Validator\Controller\AuthenticationValidator;
+use App\Utils\ApiHelper;
+use Exception;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
 
 class AuthenticationController extends AbstractController
@@ -15,17 +19,22 @@ class AuthenticationController extends AbstractController
         name: 'api_login',
         methods: ['POST']
     )]
-    public function login(AuthenticationServiceInterface $authenticationService, Request $request): JsonResponse
+    public function login(
+        AuthenticationServiceInterface $authenticationService,
+        AuthenticationValidator $authenticationValidator,
+        Request $request,
+        ApiHelper $apiHelper,
+    ): JsonResponse
     {
-        $data = json_decode($request->getContent(), true);
-
-        $email = $data['email'] ?? '';
-        $password = $data['password'] ?? '';
-
-        if (empty($email) || empty($password)) {
+        try {
+            $data = json_decode($request->getContent(), true);
+            $authenticationValidator->validateLogin($data);
+            $email = $data['email'] ?? '';
+            $password = $data['password'] ?? '';
+        } catch (Exception $e) {
             return new JsonResponse(
-                ['message' => "Email or password cannnot be empty.", 'token' => null],
-                401
+                $apiHelper->formatResponse("An error is occured: " . $e->getMessage()),
+                Response::HTTP_BAD_REQUEST
             );
         }
 

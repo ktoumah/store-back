@@ -4,6 +4,7 @@ namespace App\Controller\Api;
 
 use App\Document\Article;
 use App\Service\ArticleServiceInterface;
+use App\Service\JwtServiceInterface;
 use App\Utils\ApiHelper;
 use Exception;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -14,14 +15,20 @@ use Symfony\Component\Routing\Annotation\Route;
 class ArticleController extends AbstractController
 {
     #[Route(
-        '/articles',
-        name: 'api_articles',
-        methods: ['POST']
+        '/user-articles',
+        name: 'api_user_articles',
+        methods: ['GET']
     )]
-    public function all(ArticleServiceInterface $articleService, ApiHelper $apiHelper): JsonResponse
+    public function userArticles(
+        ArticleServiceInterface $articleService,
+        ApiHelper $apiHelper,
+        Request $request,
+        JwtServiceInterface $jwtService,
+    ): JsonResponse
     {
         try {
-            $articles = $articleService->all();
+            $token = ApiHelper::getTokenFromHeader($request->headers->get('Authorization'));
+            $articles = $articleService->userArticles($jwtService->getUserByToken($token)->getId());
 
             return new JsonResponse(
                 $apiHelper->formatResponse("All articles.", null, $articles)
@@ -34,26 +41,30 @@ class ArticleController extends AbstractController
     }
 
     #[Route(
-        '/articles/add',
+        '/articles',
         name: 'api_articles_add',
         methods: ['POST']
     )]
-    public function add(ArticleServiceInterface $articleService, Request $request, ApiHelper $apiHelper): JsonResponse
+    public function add(
+        ArticleServiceInterface $articleService,
+        JwtServiceInterface $jwtService,
+        Request $request,
+        ApiHelper $apiHelper,
+    ): JsonResponse
     {
         try {
             $data = json_decode($request->getContent(), true);
 
             $title = $data['title'] ?? '';
-            $authorId = $data['author_id'] ?? '';
-            $publicationDate = $data['publication_date'] ?? '';
+            $content = $data['content'] ?? '';
 
-            if (empty($title) || empty($authorId) || empty($publicationDate)) {
+            if (empty($title) || empty($content)) {
                 return new JsonResponse(
                     $apiHelper->formatResponse("Fields cannot be empty.")
                 );
             }
-
-            $articleService->add($title, $authorId, $publicationDate);
+            $token = ApiHelper::getTokenFromHeader($request->headers->get('Authorization'));
+            $articleService->add($title, $jwtService->getUserByToken($token)->getId(), $content);
 
             return new JsonResponse(
                 $apiHelper->formatResponse("Article added successfully.")
@@ -66,26 +77,32 @@ class ArticleController extends AbstractController
     }
 
     #[Route(
-        '/articles/update/{id}',
+        '/articles/{id}',
         name: 'api_articles_update',
-        methods: ['POST']
+        methods: ['PUT']
     )]
-    public function update(Article $article, ArticleServiceInterface $articleService, Request $request, ApiHelper $apiHelper): JsonResponse
+    public function update(
+        Article $article,
+        ArticleServiceInterface $articleService,
+        JwtServiceInterface $jwtService,
+        Request $request,
+        ApiHelper $apiHelper,
+    ): JsonResponse
     {
         try {
             $data = json_decode($request->getContent(), true);
 
             $title = $data['title'] ?? '';
-            $authorId = $data['author_id'] ?? '';
-            $publicationDate = $data['publication_date'] ?? '';
+            $content = $data['content'] ?? '';
 
-            if (empty($title) || empty($authorId) || empty($publicationDate)) {
+            if (empty($title) || empty($content)) {
                 return new JsonResponse(
                     $apiHelper->formatResponse("Fields cannot be empty.")
                 );
             }
 
-            $articleService->update($article, $title, $authorId, $publicationDate);
+            $token = ApiHelper::getTokenFromHeader($request->headers->get('Authorization'));
+            $articleService->update($article, $title, $jwtService->getUserByToken($token)->getId(), $content);
 
             return new JsonResponse(
                 $apiHelper->formatResponse("Article updated successfully.")
@@ -98,11 +115,15 @@ class ArticleController extends AbstractController
     }
 
     #[Route(
-        '/articles/delete/{id}',
+        '/articles/{id}',
         name: 'api_articles_delete',
-        methods: ['POST']
+        methods: ['DELETE']
     )]
-    public function delete(Article $article, ArticleServiceInterface $articleService, Request $request, ApiHelper $apiHelper): JsonResponse
+    public function delete(
+        Article $article,
+        ArticleServiceInterface $articleService,
+        ApiHelper $apiHelper,
+    ): JsonResponse
     {
         try {
             $articleService->delete($article);

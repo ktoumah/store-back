@@ -2,6 +2,7 @@
 
 namespace App\Document;
 
+use DateTime;
 use DateTimeInterface;
 use Doctrine\ODM\MongoDB\Mapping\Annotations as MongoDB;
 use Doctrine\ODM\MongoDB\Mapping\Annotations as ODM;
@@ -19,14 +20,18 @@ class Article
     #[ODM\ReferenceOne(targetDocument: User::class)]
     private User $author;
 
+    #[ODM\Field(type: Type::STRING)]
+    private string $content;
+
     #[ODM\Field(type: Type::DATE)]
     private DateTimeInterface $publicationDate;
 
-    public function __construct(string $title, User $author, DateTimeInterface $publicationDate)
+    public function __construct(string $title, User $author, string $content)
     {
         $this->title = $title;
         $this->author = $author;
-        $this->publicationDate = $publicationDate;
+        $this->content = $content;
+        $this->publicationDate = new DateTime();
     }
 
     public function getId(): string
@@ -42,6 +47,18 @@ class Article
     public function setTitle(string $title): static
     {
         $this->title = $title;
+
+        return $this;
+    }
+
+    public function getContent(): string
+    {
+        return $this->content;
+    }
+
+    public function setContent(string $content): static
+    {
+        $this->content = $content;
 
         return $this;
     }
